@@ -2,18 +2,25 @@ import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/dashboard/header'
 import { MenuContent } from './menu-content'
 
+export const revalidate = 60
+
 async function getMenuData() {
   const supabase = await createClient()
 
-  const { data: categories } = await supabase
-    .from('menu_categories')
-    .select('*')
-    .order('sort_order')
+  const [
+    { data: categories },
+    { data: items }
+  ] = await Promise.all([
+    supabase
+      .from('menu_categories')
+      .select('*')
+      .order('sort_order'),
 
-  const { data: items } = await supabase
-    .from('menu_items')
-    .select('*, category:menu_categories(*)')
-    .order('name')
+    supabase
+      .from('menu_items')
+      .select('*, category:menu_categories(*)')
+      .order('name')
+  ])
 
   return {
     categories: categories || [],

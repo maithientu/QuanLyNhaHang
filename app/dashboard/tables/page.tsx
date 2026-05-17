@@ -2,25 +2,32 @@ import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/dashboard/header'
 import { TablesContent } from './tables-content'
 
+export const revalidate = 10
+
 async function getTablesData() {
   const supabase = await createClient()
 
-  const { data: tables } = await supabase
-    .from('tables')
-    .select('*, area:areas(*)')
-    .order('name')
+  const [
+    { data: tables },
+    { data: areas },
+    { data: activeOrders }
+  ] = await Promise.all([
+    supabase
+      .from('tables')
+      .select('*, area:areas(*)')
+      .order('name'),
 
-  const { data: areas } = await supabase
-    .from('areas')
-    .select('*')
-    .eq('is_active', true)
-    .order('sort_order')
+    supabase
+      .from('areas')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order'),
 
-  // Get orders for occupied tables
-  const { data: activeOrders } = await supabase
-    .from('orders')
-    .select('*, table:tables(*), items:order_items(*, menu_item:menu_items(*))')
-    .not('status', 'in', '("completed","cancelled")')
+    supabase
+      .from('orders')
+      .select('*, table:tables(*), items:order_items(*, menu_item:menu_items(*))')
+      .not('status', 'in', '("completed","cancelled")')
+  ])
 
   return {
     tables: tables || [],

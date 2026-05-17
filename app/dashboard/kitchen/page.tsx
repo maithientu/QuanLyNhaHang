@@ -2,10 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/dashboard/header'
 import { KitchenContent } from './kitchen-content'
 
+export const revalidate = 5
+
 async function getKitchenData() {
   const supabase = await createClient()
 
-  // Get all active orders with their items
   const { data: orders } = await supabase
     .from('orders')
     .select(`
