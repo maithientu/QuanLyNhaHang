@@ -81,7 +81,7 @@ export function DashboardContent({
           icon={ShoppingCart}
           trend={{ value: 8, isPositive: true }}
           description="so với hôm qua"
-          iconClassName="bg-accent/10 text-accent"
+          iconClassName="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
         />
         <StatCard
           title="Đơn đang xử lý"
