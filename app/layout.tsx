@@ -9,7 +9,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'RestaurantPOS - Quản lý nhà hàng',
   description: 'Hệ thống quản lý nhà hàng chuyên nghiệp - POS, quản lý bàn, menu, đơn hàng và báo cáo',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
