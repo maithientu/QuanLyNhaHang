@@ -193,3 +193,8 @@
     @apply bg-background text-foreground;
   }
 }
+[data-sidebar="separator"] {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}

@@ -91,7 +91,7 @@ export function AppSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon">
+    <Sidebar variant="sidebar" collapsible="icon" className="overflow-hidden">
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -153,7 +153,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
+      
+      <SidebarSeparator />
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
           <Avatar className="h-9 w-9">
