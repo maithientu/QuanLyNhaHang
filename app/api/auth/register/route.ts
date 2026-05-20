@@ -18,7 +18,34 @@ export async function POST(request: Request) {
 
   const supabase = await createClient()
 
-  // Đăng ký người dùng mới vào Supabase Auth.
+  // Kiểm tra quyền người dùng hiện tại.
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Bạn cần đăng nhập bằng tài khoản quản lý để tạo tài khoản mới.' },
+      { status: 401 },
+    )
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const currentRole = profile?.role ?? (user.user_metadata as any)?.role
+
+  if (currentRole !== 'manager') {
+    return NextResponse.json(
+      { error: 'Chỉ quản lý mới được phép tạo tài khoản nhân viên.' },
+      { status: 403 },
+    )
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -36,9 +63,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  // Thêm profile vào bảng `profiles` nếu table đã được cấu hình.
   if (data?.user?.id) {
-    const { error: profileError } = await supabase.from('profiles').insert({
+    const { error: profileInsertError } = await supabase.from('profiles').insert({
       id: data.user.id,
       full_name,
       role,
@@ -46,16 +72,15 @@ export async function POST(request: Request) {
       is_active: true,
     })
 
-    if (profileError) {
-      // Nếu bảng profile chưa tồn tại, vẫn cho phép người dùng tạo tài khoản.
-      console.warn('Không thể tạo profile:', profileError.message)
+    if (profileInsertError) {
+      console.warn('Không thể tạo profile:', profileInsertError.message)
     }
   }
 
   return NextResponse.json(
     {
       message:
-        'Đăng ký thành công. Vui lòng kiểm tra email để xác thực nếu Supabase yêu cầu.',
+        'Đăng ký thành công. Người dùng mới đã được tạo. Vui lòng đăng nhập bằng tài khoản nhân viên.',
     },
     { status: 201 },
   )
