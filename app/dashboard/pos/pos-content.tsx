@@ -149,7 +149,7 @@ export function POSContent({ tables, categories, menuItems }: POSContentProps) {
         </ScrollArea>
 
         {/* Menu Items Grid */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 h-0">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pb-4">
             {filteredItems.map((item) => (
               <Card

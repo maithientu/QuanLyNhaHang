@@ -48,14 +48,14 @@ export default function HomePage() {
               href="/dashboard"
               className="rounded-full bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
             >
-              Đăng nhập nhân viên
+              Đăng nhập
             </Link>
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:bg-amber-600"
             >
               <QrCode className="h-4 w-4" />
-              Quét QR bàn
+              Quét QR
             </button>
           </div>
         </div>
@@ -67,7 +67,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.18),_transparent_20%),_radial-gradient(circle_at_bottom_right,_rgba(51,65,85,0.10),_transparent_30%)]" />
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Crect fill=\'%23f8fafc\' width=\'100\' height=\'100\'/%3E%3C/svg%3E')] bg-cover bg-center opacity-30" />
 
-        <div className="relative mx-auto flex min-h-[80vh] max-w-7xl flex-col px-6 py-16 sm:px-10 lg:px-16 lg:py-24">
+        <div className="relative mx-auto flex min-h-[80vh] max-w-7xl flex-col px-6 pb-16 pt-8 sm:px-10 lg:px-16 lg:pb-24 lg:pt-8">
           <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
             <div className="space-y-6">
               <span className="inline-flex rounded-full bg-amber-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.30em] text-amber-700">
