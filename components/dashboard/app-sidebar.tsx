@@ -91,7 +91,7 @@ export function AppSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon">
+    <Sidebar variant="sidebar" collapsible="icon" className="overflow-hidden">
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -153,20 +153,21 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
+      
+      <SidebarSeparator />
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary text-primary-foreground">AD</AvatarFallback>
+            <AvatarFallback className="bg-primary text-white font-bold">AD</AvatarFallback>
           </Avatar>
           <div className="flex flex-1 flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-medium text-sidebar-foreground">Admin</span>
-            <span className="text-xs text-sidebar-foreground/60">Quản lý</span>
+            <span className="text-sm font-bold text-foreground">Admin</span>
+            <span className="text-xs text-muted-foreground">Quản lý</span>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 group-data-[collapsible=icon]:hidden text-sidebar-foreground hover:bg-sidebar-accent"
+            className="h-8 w-8 group-data-[collapsible=icon]:hidden text-foreground hover:bg-muted"
           >
             <LogOut className="h-4 w-4" />
           </Button>
