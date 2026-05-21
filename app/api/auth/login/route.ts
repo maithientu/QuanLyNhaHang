@@ -5,12 +5,14 @@ export async function POST(request: Request) {
   const body = await request.json()
   const email = String(body.email || '').trim()
   const password = String(body.password || '')
+  
+  // Lấy thêm biến remember từ nhánh main
   const remember = Boolean(body.remember)
 
   if (!email || !password) {
     return NextResponse.json(
       { error: 'Email và mật khẩu là bắt buộc.' },
-      { status: 400 },
+      { status: 400 }
     )
   }
 
@@ -22,10 +24,10 @@ export async function POST(request: Request) {
     password,
   })
 
-  if (error || !data.session) {
+  if (error || !data?.session) {
     return NextResponse.json(
       { error: error?.message ?? 'Đăng nhập không thành công. Kiểm tra lại thông tin.' },
-      { status: 401 },
+      { status: 401 }
     )
   }
 

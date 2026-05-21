@@ -15,6 +15,8 @@ export async function GET() {
     .eq('id', user.id)
     .single()
 
+  // PGRST116 là mã lỗi khi không tìm thấy dòng dữ liệu nào (Row not found)
+  // Nếu không phải lỗi này thì mới báo lỗi server (500)
   if (profileError && profileError.code !== 'PGRST116') {
     return NextResponse.json({ error: profileError.message }, { status: 500 })
   }
@@ -28,6 +30,6 @@ export async function GET() {
         full_name: profile?.full_name ?? (user.user_metadata as any)?.full_name ?? null,
       },
     },
-    { status: 200 },
+    { status: 200 }
   )
 }

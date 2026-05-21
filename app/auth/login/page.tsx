@@ -17,29 +17,32 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-        remember,
-      }),
-    })
+    // Giữ lại cấu trúc try...catch an toàn từ nhánh auth_login
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password, remember }),
+      })
 
-    const result = await response.json()
-    setLoading(false)
+      const result = await response.json()
+      
+      if (!response.ok) {
+        setError(result.error ?? "Lỗi đăng nhập. Vui lòng thử lại.")
+        setLoading(false)
+        return
+      }
 
-    if (!response.ok) {
-      setError(result.error ?? "Lỗi đăng nhập. Vui lòng thử lại.")
-      return
+      router.push("/dashboard")
+    } catch (err) {
+      setError("Lỗi kết nối. Vui lòng thử lại.")
+      setLoading(false)
     }
-
-    router.push("/dashboard")
   }
 
+  // Giữ lại toàn bộ giao diện xịn xò của nhánh main
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10 text-slate-900 sm:px-10 lg:px-16">
       <div className="mx-auto flex max-w-4xl flex-col gap-8 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/40 sm:p-12">

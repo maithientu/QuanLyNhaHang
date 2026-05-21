@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FormEvent, useEffect, useState } from "react"
 
+// Giữ lại mảng roles gọn gàng của nhánh main
 const roles = [
   { label: "Quản lý", value: "manager" },
   { label: "Thu ngân", value: "cashier" },
@@ -18,6 +19,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
   const [role, setRole] = useState("cashier")
+  
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [isManager, setIsManager] = useState<boolean | null>(null)
@@ -50,31 +52,38 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
 
-    const response = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        full_name: fullName,
-        email,
-        password,
-        phone,
-        role,
-      }),
-    })
+    // Kết hợp cấu trúc try...catch của auth_login vào đây để tăng độ ổn định
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          password,
+          phone,
+          role,
+        }),
+      })
 
-    const result = await response.json()
-    setLoading(false)
+      const result = await response.json()
+      
+      if (!response.ok) {
+        setError(result.error ?? "Lỗi đăng ký. Vui lòng thử lại.")
+        setLoading(false)
+        return
+      }
 
-    if (!response.ok) {
-      setError(result.error ?? "Lỗi đăng ký. Vui lòng thử lại.")
-      return
+      router.push("/auth/login")
+    } catch (err) {
+      setError("Lỗi kết nối. Vui lòng thử lại.")
+      setLoading(false)
     }
-
-    router.push("/auth/login")
   }
 
+  // Giữ lại 100% giao diện siêu đẹp của nhánh main
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-10 text-slate-900 sm:px-10 lg:px-16">
       <div className="mx-auto flex max-w-4xl flex-col gap-8 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/40 sm:p-12">
@@ -87,7 +96,7 @@ export default function RegisterPage() {
         </div>
 
         {isManager === null ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 text-center font-medium">
             Đang kiểm tra quyền của bạn...
           </div>
         ) : isManager ? (
@@ -172,6 +181,7 @@ export default function RegisterPage() {
           <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
             <p className="font-semibold">Chỉ quản lý mới được tạo tài khoản nhân viên.</p>
             <p className="mt-2">Vui lòng đăng nhập bằng tài khoản quản lý trước khi sử dụng chức năng này.</p>
+            {meError && <p className="mt-2 text-xs opacity-80">Chi tiết: {meError}</p>}
           </div>
         )}
 
