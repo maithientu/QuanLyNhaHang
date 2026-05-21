@@ -4,9 +4,32 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) return NextResponse.json({ error: 'No session' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).single()
+  if (error || !user) {
+    return NextResponse.json({ error: 'Không có phiên đăng nhập.' }, { status: 401 })
+  }
 
-  return NextResponse.json({ user: { id: user.id, email: user.email, full_name: profile?.full_name ?? (user.user_metadata as any)?.full_name, role: profile?.role ?? (user.user_metadata as any)?.role } })
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, full_name')
+    .eq('id', user.id)
+    .single()
+
+  // PGRST116 là mã lỗi khi không tìm thấy dòng dữ liệu nào (Row not found)
+  // Nếu không phải lỗi này thì mới báo lỗi server (500)
+  if (profileError && profileError.code !== 'PGRST116') {
+    return NextResponse.json({ error: profileError.message }, { status: 500 })
+  }
+
+  return NextResponse.json(
+    {
+      user: {
+        id: user.id,
+        email: user.email,
+        role: profile?.role ?? (user.user_metadata as any)?.role ?? null,
+        full_name: profile?.full_name ?? (user.user_metadata as any)?.full_name ?? null,
+      },
+    },
+    { status: 200 }
+  )
 }

@@ -45,7 +45,7 @@ export default function HomePage() {
           {/* Nút hành động bên phải */}
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard"
+              href="/auth/login"
               className="rounded-full bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
             >
               Đăng nhập
