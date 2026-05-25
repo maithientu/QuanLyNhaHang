@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Table, Area, Order, OrderItem, MenuItem } from "@/lib/types/database";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -79,10 +81,22 @@ function formatTime(dateString: string) {
 }
 
 export function TablesContent({
-  tables,
+  tables: initialTables,
   areas,
   activeOrders,
 }: TablesContentProps) {
+  const router = useRouter();
+
+  const [tables, setTables] = useState(initialTables);
+
+  useEffect(() => {
+    setTables(initialTables);
+  }, [initialTables]);
+
+  const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
+  const [newTableName, setNewTableName] = useState("");
+  const [newTableCapacity, setNewTableCapacity] = useState(4);
+
   const [selectedTable, setSelectedTable] = useState<
     (Table & { area?: Area }) | null
   >(null);
@@ -137,25 +151,152 @@ export function TablesContent({
     setIsDeleteTableOpen(true);
   };
 
-  const handleConfirmDeleteTable = () => {
-    // TODO: thực hiện xóa bàn ở đây khi có backend
-    setIsDeleteTableOpen(false);
-    setTableToDelete(null);
-    alert("Tính năng xóa bàn chưa được kết nối backend.");
+  const handleConfirmDeleteTable = async () => {
+    if (!tableToDelete) return;
+
+    try {
+      const response = await fetch(`/api/tables/${tableToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Có lỗi xảy ra khi xóa bàn");
+      }
+
+      // Đóng modal xóa bàn, xóa trạng thái lưu tạm và cập nhật lại giao diện
+      setIsDeleteTableOpen(false);
+      setTableToDelete(null);
+      router.refresh();
+    } catch (error: any) {
+      alert(`Lỗi: ${error.message}`);
+    }
   };
 
-  const handleCreateArea = () => {
-    // TODO: thực hiện thêm phòng vào database khi có backend
-    setIsAreaDialogOpen(false);
-    setNewAreaName("");
-    setNewAreaSortOrder(areas.length + 1);
-    alert(`Thêm phòng "${newAreaName}" thành công (tạm).`);
+  const handleCreateArea = async () => {
+    if (!newAreaName.trim()) {
+      alert("Tên phòng/khu vực không được để trống");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/areas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newAreaName,
+          sort_order: Number(newAreaSortOrder),
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Có lỗi xảy ra khi tạo phòng");
+      }
+
+      // Tắt modal, xóa trắng ô nhập để chuẩn bị cho lần sau và reload dữ liệu
+      setIsAreaDialogOpen(false);
+      setNewAreaName("");
+      setNewAreaSortOrder(areas.length + 1);
+
+      // Ra lệnh cho Server component fetch lại dữ liệu areas mới để cập nhật danh sách Tab
+      router.refresh();
+    } catch (error: any) {
+      alert(`Lỗi: ${error.message}`);
+    }
   };
 
-  const handleConfirmDeleteArea = () => {
-    // TODO: thực hiện xóa phòng khi có backend
-    setIsDeleteAreaOpen(false);
-    alert("Tính năng xóa phòng chưa được kết nối backend.");
+  const handleConfirmDeleteArea = async () => {
+    if (!activeAreaId) {
+      alert("Vui lòng chọn phòng/khu vực cần xóa");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/areas/${activeAreaId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Có lỗi xảy ra khi xóa phòng");
+      }
+
+      // Đóng modal xóa phòng
+      setIsDeleteAreaOpen(false);
+
+      // Chuyển hướng Tab đang xem sang phòng đầu tiên còn lại (nếu có) để tránh trống giao diện
+      const remainingAreas = areas.filter((a) => a.id !== activeAreaId);
+      setActiveAreaId(remainingAreas[0]?.id || "");
+
+      router.refresh(); // Làm mới danh sách Tab trên server
+    } catch (error: any) {
+      alert(`Lỗi: ${error.message}`);
+    }
+  };
+
+  // Hàm xử lý khi chọn trạng thái mới trong Select hoặc khi bấm nút "Hoàn thành dọn dẹp"
+  const handleStatusChange = async (tableId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/tables/${tableId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Không thể cập nhật trạng thái bàn");
+      }
+
+      setTables((prevTables) =>
+        prevTables.map((t) =>
+          t.id === tableId ? { ...t, status: newStatus as any } : t,
+        ),
+      );
+
+      // Nếu đang mở Modal chi tiết bàn, cập nhật state local để hiển thị Badge mới ngay lập tức
+      if (selectedTable && selectedTable.id === tableId) {
+        setSelectedTable({ ...selectedTable, status: newStatus as any });
+      }
+
+      setIsDialogOpen(false); // Đóng modal chi tiết
+      router.refresh(); // Tải lại dữ liệu Server Component
+    } catch (error: any) {
+      alert(`Lỗi: ${error.message}`);
+    }
+  };
+
+  const handleCreateTable = async () => {
+    if (!newTableName.trim()) {
+      alert("Tên bàn không được để trống");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/tables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newTableName,
+          area_id: activeAreaId, // Tự động gán vào khu vực/tầng đang được chọn
+          capacity: Number(newTableCapacity),
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Có lỗi xảy ra khi tạo bàn");
+      }
+
+      // Đóng modal, xóa sạch ô nhập dữ liệu cũ và cập nhật lại giao diện
+      setIsTableDialogOpen(false);
+      setNewTableName("");
+      setNewTableCapacity(4);
+      router.refresh();
+    } catch (error: any) {
+      alert(`Lỗi: ${error.message}`);
+    }
   };
 
   const tableOrder = selectedTable ? getOrderForTable(selectedTable.id) : null;
@@ -229,7 +370,12 @@ export function TablesContent({
               <Plus className="h-4 w-4 mr-2" />
               Thêm phòng
             </Button>
-            <Button size="sm">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsTableDialogOpen(true)}
+              disabled={!activeAreaId}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Thêm bàn
             </Button>
@@ -368,7 +514,12 @@ export function TablesContent({
             {/* Status Change */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Đổi trạng thái</label>
-              <Select defaultValue={selectedTable?.status}>
+              <Select
+                value={selectedTable?.status}
+                onValueChange={(value) =>
+                  selectedTable && handleStatusChange(selectedTable.id, value)
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn trạng thái" />
                 </SelectTrigger>
@@ -453,7 +604,14 @@ export function TablesContent({
                 </Button>
               )}
               {selectedTable?.status === "cleaning" && (
-                <Button className="flex-1">Hoàn thành dọn dẹp</Button>
+                <Button
+                  className="flex-1"
+                  onClick={() =>
+                    handleStatusChange(selectedTable.id, "available")
+                  }
+                >
+                  Hoàn thành dọn dẹp
+                </Button>
               )}
             </div>
           </div>
@@ -513,7 +671,8 @@ export function TablesContent({
             <DialogTitle>Xóa phòng</DialogTitle>
             <DialogDescription>
               Bạn có chắc muốn xóa phòng <strong>{activeArea?.name}</strong>?
-              Thao tác này sẽ chỉ thực hiện khi có backend.
+              Hành động này sẽ không thể hoàn tác và các bàn trong phòng này sẽ
+              bị xóa vĩnh viễn.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 pt-4">
@@ -549,6 +708,59 @@ export function TablesContent({
             <Button variant="destructive" onClick={handleConfirmDeleteTable}>
               Xóa bàn
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* ========================================== */}
+      {/* DIALOG FORM: THÊM BÀN MỚI*/}
+      {/* ========================================== */}
+      <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Thêm bàn mới vào {activeArea?.name}</DialogTitle>
+            <DialogDescription>
+              Nhập tên bàn và sức chứa chỗ ngồi cho khu vực hiện tại.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">
+                Tên bàn / Số bàn
+              </label>
+              <Input
+                value={newTableName}
+                onChange={(event) => setNewTableName(event.target.value)}
+                placeholder="Ví dụ: Bàn số 10, Bàn VIP 1"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">
+                Sức chứa (Số chỗ ngồi)
+              </label>
+              <Input
+                type="number"
+                value={newTableCapacity}
+                onChange={(event) =>
+                  setNewTableCapacity(Number(event.target.value))
+                }
+                min={1}
+                max={20}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsTableDialogOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleCreateTable}
+                disabled={!newTableName.trim()}
+              >
+                Xác nhận tạo
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
