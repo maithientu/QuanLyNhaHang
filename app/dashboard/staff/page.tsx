@@ -1,37 +1,37 @@
+// app/dashboard/staff/page.tsx
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/dashboard/header";
-import { MenuContent } from "./menu-content";
+import { StaffContent } from "./staff-content";
 import { redirect } from "next/navigation";
 import type { UserRole } from "@/lib/types/database";
 
-export const revalidate = 60;
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
-async function getMenuData() {
+async function getStaffData() {
   const supabase = await createClient();
 
-  const [{ data: categories }, { data: items }] = await Promise.all([
-    supabase.from("menu_categories").select("*").order("sort_order"),
+  // Lấy toàn bộ danh sách hồ sơ nhân viên trong hệ thống
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-    supabase
-      .from("menu_items")
-      .select("*, category:menu_categories(*)")
-      .order("name"),
-  ]);
+  if (error) {
+    console.error("Lỗi khi lấy danh sách nhân viên:", error);
+  }
 
   return {
-    categories: categories || [],
-    items: items || [],
+    profiles: profiles || [],
   };
 }
 
-export default async function MenuPage() {
+export default async function StaffPage() {
   // ==================== ⚡LOGIC BẢO MẬT  ====================
   const supabase = await createClient();
 
   // 1. Lấy thông tin phiên đăng nhập hiện tại
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     redirect("/auth/login");
   }
@@ -45,19 +45,19 @@ export default async function MenuPage() {
 
   const userRole = profile?.role as UserRole;
 
-  // 3. CHẶN QUYỀN: Nếu không phải Quản lý (manager) hoặc bếp (kitchen), đá ngược về trang dashboard ngay lập tức
-  if (userRole !== "manager" && userRole !== "kitchen") {
+  // 3. CHẶN QUYỀN: Nếu không phải Quản lý (manager), đá ngược về trang dashboard ngay lập tức
+  if (userRole !== "manager") {
     redirect("/dashboard");
   }
   // =========================================================================
 
-  const data = await getMenuData();
+  const data = await getStaffData();
 
   return (
     <>
-      <Header title="Quản lý thực đơn" />
+      <Header title="Quản lý nhân viên" />
       <main className="flex-1 p-4 md:p-6 overflow-auto">
-        <MenuContent {...data} />
+        <StaffContent {...data} />
       </main>
     </>
   );

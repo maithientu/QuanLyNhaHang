@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { QRScannerDialog } from "@/components/qr-scanner-dialog";
 import { Globe, QrCode, Smartphone, MessageCircle } from "lucide-react";
 
 const navLinks = [
@@ -11,6 +15,8 @@ const navLinks = [
 ];
 
 export default function HomePage() {
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       {/* Header cố định sticky */}
@@ -52,6 +58,7 @@ export default function HomePage() {
             </Link>
             <button
               type="button"
+              onClick={() => setIsQRScannerOpen(true)}
               className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:bg-amber-600"
             >
               <QrCode className="h-4 w-4" />
@@ -60,6 +67,11 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      <QRScannerDialog
+        isOpen={isQRScannerOpen}
+        onClose={() => setIsQRScannerOpen(false)}
+      />
 
       {/* Banner / Hero Section */}
       <section className="relative overflow-hidden bg-slate-50">

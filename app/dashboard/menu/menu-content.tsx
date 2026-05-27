@@ -45,6 +45,7 @@ import {
   Clock,
   UtensilsCrossed,
 } from "lucide-react";
+import { Value } from "@radix-ui/react-select";
 
 interface MenuContentProps {
   categories: MenuCategory[];
@@ -198,8 +199,16 @@ export function MenuContent({ categories, items }: MenuContentProps) {
     return matchesSearch && matchesCategory;
   });
 
+  // 1. Tạo riêng một mảng lọc CHỈ THEO TỪ KHÓA TÌM KIẾM (Dùng chung cho việc đếm số lượng Badge)
+  const itemsMatchedSearch = items.filter(
+    (item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  // 2. Cập nhật hàm đếm số lượng cho từng danh mục con (Lấy dữ liệu từ mảng lọc tìm kiếm ở trên)
   const getItemsByCategory = (categoryId: string) => {
-    return filteredItems.filter((item) => item.category_id === categoryId);
+    return itemsMatchedSearch.filter((item) => item.category_id === categoryId);
   };
 
   return (
@@ -385,7 +394,11 @@ export function MenuContent({ categories, items }: MenuContentProps) {
       </div>
 
       {/* Categories Tabs */}
-      <Tabs defaultValue="all" className="w-full">
+      <Tabs
+        value={selectedCategory}
+        onValueChange={(value) => setSelectedCategory(value)}
+        className="w-full"
+      >
         <TabsList className="w-full justify-start flex-wrap h-auto gap-2 bg-transparent p-0">
           <TabsTrigger
             value="all"
@@ -393,7 +406,7 @@ export function MenuContent({ categories, items }: MenuContentProps) {
           >
             Tất cả
             <Badge variant="secondary" className="ml-2">
-              {filteredItems.length}
+              {itemsMatchedSearch.length}
             </Badge>
           </TabsTrigger>
           {categories.map((category) => (
@@ -410,7 +423,7 @@ export function MenuContent({ categories, items }: MenuContentProps) {
           ))}
         </TabsList>
 
-        <TabsContent value="all" className="mt-6">
+        <TabsContent value={selectedCategory || "all"} className="mt-6">
           {viewMode === "grid" ? (
             <MenuGrid
               items={filteredItems}

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { Table, Area, Order, OrderItem, MenuItem } from "@/lib/types/database";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,16 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Users, Clock, ShoppingCart, Plus, MoreVertical } from "lucide-react";
+import {
+  Users,
+  Clock,
+  ShoppingCart,
+  Plus,
+  MoreVertical,
+  QrCode,
+  Printer,
+  Loader2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,6 +95,12 @@ export function TablesContent({
   areas,
   activeOrders,
 }: TablesContentProps) {
+  // Định nghĩa các trạng thái quản lý Dialog ảnh QR
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedTableForQr, setSelectedTableForQr] = useState<any>(null);
+  const [qrImageBase64, setQrImageBase64] = useState<string | null>(null);
+  const [isLoadingQr, setIsLoadingQr] = useState(false);
+
   const router = useRouter();
 
   const [tables, setTables] = useState(initialTables);
@@ -92,6 +108,35 @@ export function TablesContent({
   useEffect(() => {
     setTables(initialTables);
   }, [initialTables]);
+
+  useEffect(() => {
+    // Khởi tạo supabase client phía client-side
+    const supabase = createClient();
+
+    // Thiết lập kênh lắng nghe mọi sự thay đổi biến động của bảng 'tables' dưới database
+    const tableRealtimeChannel = (supabase as any)
+      .channel("schema-db-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tables" },
+        (payload: any) => {
+          console.log(
+            "Phát hiện sơ đồ phòng bàn dưới DB vừa thay đổi:",
+            payload,
+          );
+
+          // Quy tắc Đồng bộ State của dự án:
+          // Ép Server Component chạy lại hàm fetch dữ liệu gốc để giao diện đổi màu lập tức trong 0.1 giây
+          router.refresh();
+        },
+      )
+      .subscribe();
+
+    // Hàm dọn dẹp (Clean up) đóng cổng kết nối khi nhân viên chuyển sang trang khác
+    return () => {
+      (supabase as any).removeChannel(tableRealtimeChannel);
+    };
+  }, [router]);
 
   const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
   const [newTableName, setNewTableName] = useState("");
@@ -299,6 +344,49 @@ export function TablesContent({
     }
   };
 
+  // Hàm xử lý khi Admin bấm vào nút "In mã QR" của một bàn cụ thể
+  const handleOpenQrScanner = async (table: any) => {
+    try {
+      setIsDialogOpen(false); // Đóng modal chi tiết bàn nếu đang mở
+
+      setSelectedTableForQr(table);
+      setIsQrModalOpen(true);
+      setIsLoadingQr(true);
+      setQrImageBase64(null);
+
+      // Gọi lên API sinh chuỗi ảnh QR Base64 dạng dữ liệu động
+      const response = await fetch(`/api/tables/${table.id}/qr`);
+      const data = await response.json();
+
+      if (data.qrCode) {
+        setQrImageBase64(data.qrCode);
+      }
+    } catch (error) {
+      console.error("Không thể tải mã QR:", error);
+    } finally {
+      setIsLoadingQr(false);
+    }
+  };
+
+  // Hàm kích hoạt lệnh in của trình duyệt để in giấy dán bàn
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (printWindow && qrImageBase64) {
+      printWindow.document.write(`
+        <html>
+          <body style="text-align: center; font-family: sans-serif; padding-top: 40px;">
+            <h2>MÃ QR ĐẶT MÓN TỰ ĐỘNG</h2>
+            <h1 style="font-size: 3rem; margin: 10px 0;">${selectedTableForQr?.name}</h1>
+            <p style="color: #666;">Quét mã bằng điện thoại để xem thực đơn và gọi món</p>
+            <img src="${qrImageBase64}" style="width: 300px; height: 300px; margin-top: 20px;" />
+            <script>window.print(); window.close();</script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
   const tableOrder = selectedTable ? getOrderForTable(selectedTable.id) : null;
 
   return (
@@ -451,6 +539,12 @@ export function TablesContent({
                                 }}
                               >
                                 Xóa bàn
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenQrScanner(table)}
+                              >
+                                <QrCode className="mr-2 h-4 w-4 text-amber-500" />
+                                <span>In mã QR Bàn</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -711,6 +805,7 @@ export function TablesContent({
           </div>
         </DialogContent>
       </Dialog>
+
       {/* ========================================== */}
       {/* DIALOG FORM: THÊM BÀN MỚI*/}
       {/* ========================================== */}
@@ -761,6 +856,59 @@ export function TablesContent({
                 Xác nhận tạo
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================= */}
+      {/* KHỐI THÊM MỚI: Hộp thoại Dialog hiển thị và In mã QR sắc nét */}
+      {/* ========================================================= */}
+      <Dialog open={isQrModalOpen} onOpenChange={setIsQrModalOpen}>
+        <DialogContent className="sm:max-w-[400px] z-[9999]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <QrCode className="h-5 w-5 text-primary" />
+              <span>Mã QR độc quyền - {selectedTableForQr?.name}</span>
+            </DialogTitle>
+            <DialogDescription>
+              Mã QR dùng để dán tại bàn, tự động nhận diện và khóa giao diện
+              phục vụ cho Khách hàng.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center p-6 border rounded-xl bg-muted/20 my-2 min-h-[260px]">
+            {isLoadingQr ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">
+                  Đang khởi tạo mã QR...
+                </p>
+              </div>
+            ) : qrImageBase64 ? (
+              <div className="bg-white p-3 rounded-lg shadow-sm border">
+                <img
+                  src={qrImageBase64}
+                  alt="Table QR Code"
+                  className="w-[200px] height-[200px]"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-destructive">Lỗi sinh mã QR bàn</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 justify-end mt-2">
+            <Button variant="outline" onClick={() => setIsQrModalOpen(false)}>
+              Đóng lại
+            </Button>
+            <Button
+              onClick={handlePrint}
+              disabled={!qrImageBase64}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              In mã QR
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
