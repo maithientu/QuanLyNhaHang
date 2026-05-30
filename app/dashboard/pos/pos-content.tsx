@@ -64,6 +64,7 @@ export function POSContent({ tables, categories, menuItems }: POSContentProps) {
   const [guestCount, setGuestCount] = useState<string>("1"); // Dùng dạng string giúp trải nghiệm gõ phím không bị nhảy số dội ngược
   const [orderNote, setOrderNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false); // Chặn spam click liên tục khi đang xử lý
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const availableTables = tables.filter(
     (t) =>
@@ -245,12 +246,13 @@ export function POSContent({ tables, categories, menuItems }: POSContentProps) {
                 className="cursor-pointer hover:border-primary transition-colors overflow-hidden"
                 onClick={() => addToCart(item)}
               >
-                <div className="aspect-square bg-muted relative">
+                <div className="aspect-square bg-muted relative overflow-hidden">
                   {item.image_url ? (
                     <img
                       src={item.image_url}
                       alt={item.name}
-                      className="object-cover w-full h-full"
+                      className="absolute inset-0 object-cover w-full h-full"
+                      onClick={(e) => { e.stopPropagation(); setPreviewImage(item.image_url!); }}
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full text-4xl">
@@ -471,6 +473,20 @@ export function POSContent({ tables, categories, menuItems }: POSContentProps) {
           )}
         </div>
       </div>
+
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="Xem ảnh"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+          />
+        </div>
+      )}
+      
     </div>
   );
 }

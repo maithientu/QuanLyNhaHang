@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createClient } from "@/lib/supabase/client";
 import {
   Table,
   TableBody,
@@ -74,9 +75,30 @@ export function MenuContent({ categories, items }: MenuContentProps) {
     preparation_time: 15,
     description: "",
     is_available: true,
+    image_url: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false); // Trạng thái đợi API lưu dữ liệu
 
+  const handleImageUpload = async (file: File): Promise<string | null> => {
+    const supabase = createClient();
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+  
+    const { error } = await supabase.storage
+      .from("menu-images")
+      .upload(fileName, file);
+  
+    if (error) {
+      alert("Lỗi upload ảnh: " + error.message);
+      return null;
+    }
+  
+    const { data } = supabase.storage
+      .from("menu-images")
+      .getPublicUrl(fileName);
+  
+    return data.publicUrl;
+  };
   // --- HÀM GỌI API (FETCH) ĐỂ LƯU MÓN ĂN MỚI LÊN DATABASE ---
   const handleCreateItem = async () => {
     // Kiểm tra dữ liệu bắt buộc trước khi gửi đi
@@ -100,7 +122,7 @@ export function MenuContent({ categories, items }: MenuContentProps) {
           preparation_time: Number(formData.preparation_time),
           cost_price: Number(formData.cost_price),
           is_available: formData.is_available,
-          // Bạn có thể bổ sung thêm cost_price hoặc is_available nếu db của bạn có các cột này
+          image_url: formData.image_url,
         }),
       });
 
@@ -172,7 +194,8 @@ export function MenuContent({ categories, items }: MenuContentProps) {
           description: editingItem.description,
           preparation_time: Number(editingItem.preparation_time),
           is_available: editingItem.is_available,
-          category_id: editingItem.category_id || editingItem.category?.id, // Cập nhật category_id nếu có thay đổi
+          category_id: editingItem.category_id || editingItem.category?.id,
+          image_url: editingItem.image_url,
         }),
       });
 
@@ -274,7 +297,7 @@ export function MenuContent({ categories, items }: MenuContentProps) {
                   Nhập thông tin món ăn mới vào thực đơn
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Tên món</Label>
                   <Input
@@ -362,6 +385,26 @@ export function MenuContent({ categories, items }: MenuContentProps) {
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ảnh món ăn</Label>
+                  {formData.image_url && (
+                    <img
+                      src={formData.image_url}
+                      alt="Ảnh món ăn"
+                      className="h-32 w-full object-cover rounded-lg border"
+                    />
+                  )}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const url = await handleImageUpload(file);
+                      if (url) setFormData({ ...formData, image_url: url });
+                    }}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -468,7 +511,7 @@ export function MenuContent({ categories, items }: MenuContentProps) {
           </DialogHeader>
 
           {editingItem && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Tên món</Label>
                 <Input
@@ -542,6 +585,26 @@ export function MenuContent({ categories, items }: MenuContentProps) {
                   }
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Ảnh món ăn</Label>
+                {editingItem.image_url && (
+                  <img
+                    src={editingItem.image_url}
+                    alt="Ảnh món ăn"
+                    className="h-32 w-full object-cover rounded-lg border"
+                  />
+                )}
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const url = await handleImageUpload(file);
+                    if (url) setEditingItem({ ...editingItem, image_url: url });
+                  }}
+                />
+              </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="edit-available">Còn phục vụ</Label>
                 <Switch
@@ -595,12 +658,12 @@ function MenuGrid({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {items.map((item) => (
         <Card key={item.id} className="overflow-hidden group">
-          <div className="aspect-video bg-muted relative">
+          <div className="aspect-video bg-muted relative overflow-hidden">
             {item.image_url ? (
               <img
                 src={item.image_url}
                 alt={item.name}
-                className="object-cover w-full h-full"
+                className="absolute inset-0 object-cover w-full h-full"
               />
             ) : (
               <div className="flex items-center justify-center h-full">
