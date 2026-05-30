@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { QRScannerDialog } from "@/components/qr-scanner-dialog";
 import { Globe, QrCode, Smartphone, MessageCircle } from "lucide-react";
+import Image from "next/image";
 
 const navLinks = [
   { label: "Trang chủ", href: "#" },
@@ -115,18 +116,13 @@ export default function HomePage() {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(248,113,113,0.20),_transparent_45%)]" />
                 <div className="relative flex h-[340px] items-end justify-center rounded-[1.5rem] border border-slate-300 bg-slate-200">
                   {/* Replace placeholder bằng <Image> khi có ảnh */}
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-900/15 to-transparent" />
-                  <div className="text-center">
-                    <div className="mx-auto mb-5 flex h-32 w-32 items-center justify-center rounded-full bg-white/90 text-amber-600 shadow-lg shadow-amber-200/70">
-                      <Smartphone className="h-10 w-10" />
-                    </div>
-                    <p className="text-lg font-semibold text-slate-900">
-                      Ảnh nhà hàng
-                    </p>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Thay bằng ảnh thực tế sau khi có trong resources.
-                    </p>
-                  </div>
+                  <Image
+                    src="/hero.jpg"
+                    alt="Nhà hàng SenSan"
+                    fill
+                    className="object-cover rounded-[1.5rem]"
+                    priority
+                  />
                 </div>
               </div>
             </div>
@@ -318,13 +314,20 @@ export default function HomePage() {
             </h2>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, index) => (
+            {["/gallery-1.jpg", "/gallery-2.jpg", "/gallery-3.jpg"].map((src, index) => (
               <div
                 key={index}
                 className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-100 p-0 shadow-sm"
               >
-                <div className="h-72 bg-slate-200" />
+                <div className="relative h-72">
+                <Image
+                  src={src}
+                  alt={`Hình ảnh nhà hàng ${index + 1}`}
+                  fill
+                  className="object-cover"
+                />
               </div>
+            </div>
             ))}
           </div>
         </div>
