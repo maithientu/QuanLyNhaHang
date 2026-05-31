@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { FormEvent, useState } from "react"
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [remember, setRemember] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setLoading(true)
-    setError(null)
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
 
     // Giữ lại cấu trúc try...catch an toàn từ nhánh auth_login
     try {
@@ -25,20 +25,23 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password, remember }),
-      })
+      });
 
-      const result = await response.json()
-      
+      const result = await response.json();
+
       if (!response.ok) {
-        setError(result.error ?? "Lỗi đăng nhập. Vui lòng thử lại.")
-        setLoading(false)
-        return
+        setError(result.error ?? "Lỗi đăng nhập. Vui lòng thử lại.");
+        setLoading(false);
+        return;
       }
 
-      router.push("/dashboard")
+      // ⏱️ GHI LẠI MỐC THỜI GIAN BẮT ĐẦU VÀO CA LÀM VIỆC KHI ĐĂNG NHẬP THÀNH CÔNG
+      localStorage.setItem("session_start_time", Date.now().toString());
+
+      router.push("/dashboard");
     } catch (err) {
-      setError("Lỗi kết nối. Vui lòng thử lại.")
-      setLoading(false)
+      setError("Lỗi kết nối. Vui lòng thử lại.");
+      setLoading(false);
     }
   }
 
@@ -47,10 +50,15 @@ export default function LoginPage() {
     <main className="min-h-screen bg-slate-50 px-6 py-10 text-slate-900 sm:px-10 lg:px-16">
       <div className="mx-auto flex max-w-4xl flex-col gap-8 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/40 sm:p-12">
         <div className="space-y-3 text-center">
-          <p className="text-sm uppercase tracking-[0.4em] text-amber-700">Đăng nhập nhân viên</p>
-          <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">Đăng nhập vào hệ thống quản lý</h1>
+          <p className="text-sm uppercase tracking-[0.4em] text-amber-700">
+            Đăng nhập nhân viên
+          </p>
+          <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">
+            Đăng nhập vào hệ thống quản lý
+          </h1>
           <p className="mx-auto max-w-2xl text-base leading-7 text-slate-600">
-            Nhập email và mật khẩu để truy cập dashboard nhân viên. Nếu chưa có tài khoản, bạn có thể đăng ký mới.
+            Nhập email và mật khẩu để truy cập dashboard nhân viên. Nếu chưa có
+            tài khoản, bạn có thể đăng ký mới.
           </p>
         </div>
 
@@ -92,7 +100,10 @@ export default function LoginPage() {
               />
               Giữ đăng nhập
             </label>
-            <Link href="/auth/register" className="font-semibold text-amber-700 hover:text-amber-900">
+            <Link
+              href="/auth/register"
+              className="font-semibold text-amber-700 hover:text-amber-900"
+            >
               Tạo tài khoản mới
             </Link>
           </div>
@@ -115,16 +126,22 @@ export default function LoginPage() {
         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
           <p className="font-medium text-slate-900">Lưu ý bảo mật</p>
           <p className="mt-2">
-            Tài khoản nhân viên được lưu trong hệ thống Supabase. Mật khẩu mã hóa và phiên làm việc được quản lý tự động.
+            Tài khoản nhân viên được lưu trong hệ thống Supabase. Mật khẩu mã
+            hóa và phiên làm việc được quản lý tự động.
           </p>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
           <p className="font-medium text-slate-900">Chức năng đăng nhập mẫu</p>
-          <p className="mt-2">Email thử nghiệm: <span className="font-semibold">demo@restaurant.com</span></p>
-          <p>Mật khẩu thử: <span className="font-semibold">Demo1234!</span></p>
+          <p className="mt-2">
+            Email thử nghiệm:{" "}
+            <span className="font-semibold">demo@restaurant.com</span>
+          </p>
+          <p>
+            Mật khẩu thử: <span className="font-semibold">Demo1234!</span>
+          </p>
         </div>
       </div>
     </main>
-  )
+  );
 }

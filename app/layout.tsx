@@ -58,10 +58,10 @@ export default function RootLayout({
   return (
     <html lang="vi" className="bg-background" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        {children} // Render nội dung của các trang hoặc layout con tại đây.
+        {children}
+        {/* // Render nội dung của các trang hoặc layout con tại đây.
         // Thành phần Analytics từ Vercel chỉ được tải và sử dụng trong môi trường production
-        // để thu thập dữ liệu phân tích về hiệu suất ứng dụng.
-
+        // để thu thập dữ liệu phân tích về hiệu suất ứng dụng.*/}
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
