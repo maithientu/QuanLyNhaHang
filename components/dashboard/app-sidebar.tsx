@@ -17,6 +17,7 @@ import {
   Settings,
   CalendarDays,
   LogOut,
+  Scale,
 } from "lucide-react";
 import {
   Sidebar,
@@ -48,6 +49,10 @@ const ALLOWED_ROUTES: Record<UserRole, string[]> = {
     "/dashboard/reports",
     "/dashboard/staff",
     "/dashboard/settings",
+    "/dashboard/inventory/ingredients",
+    "/dashboard/menu/recipes",
+    "/dashboard/inventory/suppliers",
+    "/dashboard/inventory/receipts",
   ],
   cashier: [
     "/dashboard",
@@ -78,10 +83,18 @@ const mainNavItems = [
 
 const managementNavItems = [
   { title: "Thực đơn", url: "/dashboard/menu", icon: UtensilsCrossed },
+  { title: "Công thức", url: "/dashboard/menu/recipes", icon: Scale },
   { title: "Đặt bàn", url: "/dashboard/reservations", icon: CalendarDays },
   { title: "Báo cáo", url: "/dashboard/reports", icon: BarChart3 },
   { title: "Nhân viên", url: "/dashboard/staff", icon: Users },
   { title: "Cài đặt", url: "/dashboard/settings", icon: Settings },
+  { title: "Kho", url: "/dashboard/inventory/ingredients", icon: Grid3X3 },
+  { title: "Nhà cung cấp", url: "/dashboard/inventory/suppliers", icon: Users },
+  {
+    title: "Chứng từ nhập kho",
+    url: "/dashboard/inventory/receipts",
+    icon: Receipt,
+  },
 ];
 
 export function AppSidebar() {
