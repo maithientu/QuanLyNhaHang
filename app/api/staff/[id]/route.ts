@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// API: CẬP NHẬT CHỨC VỤ HOẶC TRẠNG THÁI TÀI KHOẢN NHÂN VIÊN
+// API: CẬP NHẬT CHỨC VỤ, TRẠNG THÁI HOẶC THÔNG TIN CÁ NHÂN NHÂN VIÊN
 export async function PATCH(
   request: Request,
   context: any, // Sử dụng cấu trúc context để tương thích an toàn với Node.js 16
@@ -31,6 +31,8 @@ export async function PATCH(
     const updateData: any = {};
 
     // 3. Ép kiểu bảo vệ và dọn sạch dữ liệu trước khi chèn vào database
+    
+    // Cập nhật Chức vụ (Role)
     if (
       body.role &&
       ["manager", "cashier", "waiter", "kitchen"].includes(body.role)
@@ -38,11 +40,35 @@ export async function PATCH(
       updateData.role = String(body.role);
     }
 
+    // Cập nhật Trạng thái hoạt động (Active/Lock)
     if (body.is_active !== undefined) {
       updateData.is_active =
         body.is_active === "undefined" || body.is_active === null
           ? true
           : Boolean(body.is_active);
+    }
+
+    // [BỔ SUNG] Cập nhật Họ và tên
+    if (body.full_name !== undefined) {
+      updateData.full_name = String(body.full_name).trim();
+    }
+
+    // [BỔ SUNG] Cập nhật Số điện thoại (Xử lý linh hoạt chuỗi trống hoặc null)
+    if (body.phone !== undefined) {
+      updateData.phone = body.phone ? String(body.phone).trim() : null;
+    }
+
+    // [BỔ SUNG] Cập nhật Mức lương theo giờ
+    if (body.hourly_rate !== undefined) {
+      updateData.hourly_rate = Number(body.hourly_rate);
+    }
+
+    // Chặn trường hợp gửi request rỗng không thay đổi gì
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: "Không có thông tin nào được yêu cầu thay đổi" },
+        { status: 400 }
+      );
     }
 
     updateData.updated_at = new Date().toISOString();
@@ -56,7 +82,10 @@ export async function PATCH(
 
     if (error) {
       console.error("Lỗi Supabase khi cập nhật thông tin nhân viên:", error);
-      throw error;
+      return NextResponse.json(
+        { error: `Lỗi Supabase: ${error.message}` },
+        { status: 400 }
+      );
     }
 
     // Bóc tách lấy object đầu tiên của mảng trả về

@@ -18,16 +18,41 @@ export type OrderItemStatus =
   | "cancelled";
 export type PaymentMethod = "cash" | "card" | "transfer" | "qr";
 export type PaymentStatus = "pending" | "paid" | "refunded";
+export type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
 export interface Profile {
-  id: string;
+  id: string; // uuid
   full_name: string;
   role: UserRole;
   phone: string | null;
   avatar_url: string | null;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at: string; // timestamp with time zone (ISO 8601 string)
+  updated_at: string; // timestamp with time zone
+  hourly_rate: number; // numeric
+}
+
+export interface Shift {
+  id: string; // uuid
+  shift_name: string;
+  start_time: string; // time without time zone
+  end_time: string; // time without time zone
+  total_hours: number; // numeric(4,2)
+  created_at: string; // timestamp with time zone
+}
+
+export interface AttendanceLog {
+  id: string; // uuid
+  employee_id: string; // uuid (ref: profiles.id)
+  shift_id: string; // uuid (ref: shifts.id)
+  attendance_date: string; // date (YYYY-MM-DD)
+  status: AttendanceStatus; // Đã cập nhật dùng custom type
+  late_minutes: number; // integer
+  note: string | null;
+  approved_by: string | null; // uuid (ref: profiles.id)
+  is_locked: boolean;
+  created_at: string; // timestamp with time zone
+  updated_at: string; // timestamp with time zone
 }
 
 export interface RestaurantSettings {
