@@ -15,11 +15,11 @@ async function getInitialRecipesData() {
   const [{ data: menuItems }, { data: ingredients }] = await Promise.all([
     supabase
       .from("menu_items")
-      .select("id, name, price, image_url")
+      .select("*")
       .order("name"),
     supabase
       .from("ingredients")
-      .select("id, name, base_uom, code")
+      .select("*")
       .order("name"),
   ]);
 

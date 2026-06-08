@@ -14,7 +14,23 @@ import {
   Percent,
   ChefHat,
   Eye,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils"; // Hàm hỗ trợ gộp class của shadcn
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -471,27 +487,58 @@ export function RecipesContent({
                       <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block text-left">
                         Chọn nguyên liệu kho / Gia vị nền *
                       </label>
-                      <Select
-                        value={row.ingredient_id}
-                        onValueChange={(val) =>
-                          handleIngredientChange(index, val)
-                        }
-                      >
-                        <SelectTrigger className="h-11 text-sm font-semibold w-full bg-background text-left">
-                          <SelectValue placeholder="Bấm để chọn nguyên liệu..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ingredients.map((i) => (
-                            <SelectItem
-                              key={i.id}
-                              value={i.id}
-                              className="text-sm py-2"
-                            >
-                              {i.name} {i.code ? `(${i.code})` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "h-11 text-sm font-semibold rounded-xl border-slate-200 bg-slate-50/50 justify-between w-full px-3 text-left font-normal",
+                              !row.ingredient_id && "text-muted-foreground"
+                            )}
+                          >
+                            {row.ingredient_id
+                              ? ingredients.find((i) => i.id === row.ingredient_id)?.name
+                              : "Gõ hoặc bấm để chọn nguyên liệu..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        
+                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-xl shadow-lg" align="start">
+                          <Command className="rounded-xl">
+                            {/* Ô nhập chữ để tra cứu nhanh */}
+                            <CommandInput placeholder="Nhập tên nguyên liệu cần tìm..." className="h-10 text-sm" />
+                            <CommandList className="max-h-[250px] custom-scrollbar">
+                              <CommandEmpty className="py-3 text-center text-xs text-slate-400 font-medium">
+                                Không tìm thấy nguyên liệu nào.
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {ingredients.map((i) => (
+                                  <CommandItem
+                                    key={i.id}
+                                    value={i.name} // Dữ liệu dùng để lọc khi gõ chữ
+                                    className="text-sm py-2 cursor-pointer rounded-lg"
+                                    onSelect={() => {
+                                      // Kích hoạt hàm xử lý đổi nguyên liệu y hệt logic cũ của bạn
+                                      handleIngredientChange(index, i.id);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4 text-amber-600",
+                                        row.ingredient_id === i.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <span className="font-medium text-slate-800">
+                                      {i.name} {i.code ? `(${i.code})` : ""}
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     {/* Ô 2: Nhập hàm lượng thô định mức tiêu hao */}
