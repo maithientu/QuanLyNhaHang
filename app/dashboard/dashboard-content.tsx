@@ -1,3 +1,4 @@
+// app/dashboard/dashboard-content.tsx
 "use client";
 
 import { DollarSign, ShoppingCart, Clock, Grid3X3 } from "lucide-react";
@@ -62,9 +63,7 @@ export function DashboardContent({
   }, []);
 
   return (
-    // Thêm max-w để bảo vệ bố cục trên màn hình siêu rộng
     <div className="mx-auto max-w-[1600px] space-y-6 p-1">
-      
       {/* Intro banner */}
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -121,10 +120,10 @@ export function DashboardContent({
         />
       </div>
 
-      {/* Khu vực trạng thái bàn */}
+      {/* Khu vực sơ đồ trạng thái bàn real-time */}
       <TableOverview tables={tables} areas={areas} />
 
-      {/* Biểu đồ và Top sản phẩm */}
+      {/* Khu vực phân tích dữ liệu: Biểu đồ xu hướng doanh thu ngắn hạn và Tỷ trọng món ăn bán chạy */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <RevenueChart data={revenueData} />
@@ -134,8 +133,18 @@ export function DashboardContent({
         </div>
       </div>
 
-      {/* Đơn hàng gần đây */}
-      <RecentOrders orders={recentOrders} />
+      {/* Nhật ký hoạt động: Danh sách 5 hóa đơn vừa thanh toán hoàn tất gần đây */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="p-4 pb-2">
+          <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+            Hóa đơn vừa thanh toán gần đây
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Nhật ký cập nhật dòng tiền thực thu tức thời tại các quầy.
+          </p>
+        </div>
+        <RecentOrders orders={recentOrders} />
+      </div>
     </div>
   );
 }
