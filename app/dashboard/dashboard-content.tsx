@@ -1,6 +1,7 @@
 "use client";
 
 import { DollarSign, ShoppingCart, Clock, Grid3X3 } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   StatCard,
   TableOverview,
@@ -42,30 +43,51 @@ export function DashboardContent({
   revenueData,
   stats,
 }: DashboardContentProps) {
+  const [sessionTime, setSessionTime] = useState<string>("");
+
+  useEffect(() => {
+    const startTime = localStorage.getItem("session_start_time");
+    if (!startTime) return;
+
+    const updateClock = () => {
+      const diff = Date.now() - parseInt(startTime);
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      setSessionTime(`${hours}g ${minutes}ph`);
+    };
+
+    updateClock();
+    const interval = setInterval(updateClock, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="space-y-6">
-      {/* Intro banner: tạo cảm giác dashboard chuyên nghiệp hơn */}
-      <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+    // Thêm max-w để bảo vệ bố cục trên màn hình siêu rộng
+    <div className="mx-auto max-w-[1600px] space-y-6 p-1">
+      
+      {/* Intro banner */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-amber-600">
               Tổng quan quản lý
             </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+            <h2 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
               Bảng điều khiển nhà hàng
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Xem nhanh tình trạng bàn, doanh thu và đơn hàng trong ngày ngay
-              trên giao diện trực quan.
+            <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+              Xem nhanh tình trạng bàn, doanh thu và đơn hàng trong ngày
             </p>
           </div>
-          <div className="rounded-3xl bg-primary/10 px-4 py-3 text-sm font-semibold text-primary shadow-sm">
-            Cập nhật mới nhất
-          </div>
+          {sessionTime && (
+            <div className="self-start rounded-2xl bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-700 shadow-sm dark:bg-amber-950/40 dark:text-amber-400 sm:self-center">
+              ⏱️ Thời gian hoạt động: {sessionTime}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Stats grid: 4 chỉ số chính giúp người dùng nắm bắt nhanh */}
+      {/* Stats grid */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Doanh thu hôm nay"
@@ -73,7 +95,7 @@ export function DashboardContent({
           icon={DollarSign}
           trend={{ value: 12.5, isPositive: true }}
           description="so với hôm qua"
-          iconClassName="bg-primary/10 text-primary"
+          iconClassName="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
         />
         <StatCard
           title="Đơn hàng hôm nay"
@@ -81,34 +103,38 @@ export function DashboardContent({
           icon={ShoppingCart}
           trend={{ value: 8, isPositive: true }}
           description="so với hôm qua"
-          iconClassName="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+          iconClassName="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
         />
         <StatCard
           title="Đơn đang xử lý"
           value={stats.activeOrders}
           icon={Clock}
           description="đang chờ phục vụ"
-          iconClassName="bg-chart-4/20 text-chart-4"
+          iconClassName="bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400"
         />
         <StatCard
           title="Bàn trống"
           value={`${stats.availableTables}/${stats.totalTables}`}
           icon={Grid3X3}
           description={`${stats.occupiedTables} có khách, ${stats.reservedTables} đã đặt`}
-          iconClassName="bg-chart-2/20 text-chart-2"
+          iconClassName="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
         />
       </div>
 
-      {/* Table overview cho phép nhìn tổng quan số bàn theo từng khu vực */}
+      {/* Khu vực trạng thái bàn */}
       <TableOverview tables={tables} areas={areas} />
 
-      {/* Biểu đồ doanh thu và danh sách bán chạy */}
-      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <RevenueChart data={revenueData} />
-        <TopSellingItems items={topSellingItems} />
+      {/* Biểu đồ và Top sản phẩm */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RevenueChart data={revenueData} />
+        </div>
+        <div className="lg:col-span-1">
+          <TopSellingItems items={topSellingItems} />
+        </div>
       </div>
 
-      {/* Danh sách đơn hàng gần đây để dễ theo dõi hoạt động */}
+      {/* Đơn hàng gần đây */}
       <RecentOrders orders={recentOrders} />
     </div>
   );
