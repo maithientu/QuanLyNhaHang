@@ -12,9 +12,9 @@ const supabaseAdmin = createClient(
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password, full_name, role, phone } = body;
+    const { email, password, full_name, role, phone, hourly_rate } = body;
 
-    // 1. Kiểm tra dọn sạch và thanh lọc dữ liệu đầu vào
+    // 1. Kiểm tra dữ liệu đầu vào bắt buộc
     if (!email || !password || !full_name || !role) {
       return NextResponse.json(
         { error: "Vui lòng điền đầy đủ các trường bắt buộc" },
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
           role: String(role),
           phone: phone ? String(phone).trim() : null,
           is_active: true,
+          hourly_rate: hourly_rate ? Number(hourly_rate) : 0, // Lưu mức lương theo giờ
         },
       ])
       .select()

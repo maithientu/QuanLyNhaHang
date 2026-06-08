@@ -119,7 +119,11 @@ export default function LoginPage() {
             
             <Link
               href="/auth/forgot-password"
+<<<<<<< HEAD
               className="font-medium text-amber-700 hover:text-amber-900 transition"
+=======
+              className="font-semibold text-amber-700 hover:text-amber-900"
+>>>>>>> e26d693bf58b6bf41c9b6a82a4b6d2d03a687eaf
             >
               Quên mật khẩu?
             </Link>
