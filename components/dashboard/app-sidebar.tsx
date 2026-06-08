@@ -48,7 +48,6 @@ const ALLOWED_ROUTES: Record<UserRole, string[]> = {
     "/dashboard/reservations",
     "/dashboard/reports",
     "/dashboard/staff",
-    "/dashboard/settings",
     "/dashboard/inventory/ingredients",
     "/dashboard/menu/recipes",
     "/dashboard/inventory/suppliers",
@@ -87,7 +86,6 @@ const managementNavItems = [
   { title: "Đặt bàn", url: "/dashboard/reservations", icon: CalendarDays },
   { title: "Báo cáo", url: "/dashboard/reports", icon: BarChart3 },
   { title: "Nhân viên", url: "/dashboard/staff", icon: Users },
-  { title: "Cài đặt", url: "/dashboard/settings", icon: Settings },
   { title: "Kho", url: "/dashboard/inventory/ingredients", icon: Grid3X3 },
   { title: "Nhà cung cấp", url: "/dashboard/inventory/suppliers", icon: Users },
   {
