@@ -1,3 +1,4 @@
+// app/dashboard/billing/billing-content.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -18,13 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   Receipt,
@@ -32,8 +26,6 @@ import {
   Banknote,
   QrCode,
   Building2,
-  DollarSign,
-  TrendingUp,
   CheckCircle,
   Printer,
 } from "lucide-react";
@@ -49,6 +41,7 @@ interface BillingContentProps {
   };
 }
 
+// Hàm format tiền tệ VNĐ
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -56,6 +49,7 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
+// Hàm format hiển thị giờ giấc
 function formatTime(dateString: string) {
   return new Date(dateString).toLocaleTimeString("vi-VN", {
     hour: "2-digit",
@@ -63,6 +57,7 @@ function formatTime(dateString: string) {
   });
 }
 
+// Danh sách các phương thức thanh toán tại nhà hàng
 const paymentMethods = [
   { value: "cash", label: "Tiền mặt", icon: Banknote },
   { value: "card", label: "Thẻ", icon: CreditCard },
@@ -71,13 +66,7 @@ const paymentMethods = [
 ];
 
 export function BillingContent({ orders, stats }: BillingContentProps) {
-  const [selectedOrder, setSelectedOrder] = useState<
-    | (Order & {
-        table?: Table;
-        items?: (OrderItem & { menu_item?: MenuItem })[];
-      })
-    | null
-  >(null);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [receivedAmount, setReceivedAmount] = useState("");
@@ -86,108 +75,28 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
 
   const router = useRouter();
 
-  // Tính toán dữ liệu thống kê thanh toán
-  const averageOrderValue =
-    orders.length > 0
-      ? orders.reduce((sum, o) => sum + (o.total || 0), 0) / orders.length
-      : 0;
-
-  const maxOrderValue =
-    orders.length > 0 ? Math.max(...orders.map((o) => o.total || 0)) : 0;
-
-  const handlePayment = (order: any) => {
-    setSelectedOrder(order);
-
-    const orderTotal = order.total || 0;
-
-    setReceivedAmount(orderTotal.toString());
-
-    setDiscount("");
-
-    setPaymentMethod("cash");
-    setIsPaymentDialogOpen(true);
-  };
-
-  const handlePrintBill = () => {
-    setIsPrinting(true);
-    setTimeout(() => setIsPrinting(false), 500);
-  };
-
-  const handleConfirmPayment = async () => {
-    if (!selectedOrder) return;
-
-    try {
-      setIsPrinting(true); // Mượn tạm trạng thái loading hoặc dùng stateisSubmitting
-
-      // Gửi toàn bộ dữ liệu hóa đơn gộp lên API Backend
-      const response = await fetch("/api/billing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // Cực kì quan trọng: Nếu là đơn gộp, truyền mảng order_ids, nếu đơn lẻ truyền [selectedOrder.id]
-          order_ids: (selectedOrder as any).order_ids || [selectedOrder.id],
-          table_id: selectedOrder.table_id || "takeaway",
-          amount: total,
-          payment_method: paymentMethod,
-          discount: parseFloat(discount) || 0,
-          received_amount:
-            paymentMethod === "cash" ? parseFloat(receivedAmount) || 0 : total,
-          change_amount: paymentMethod === "cash" ? change : 0,
-          note: `Thanh toán qua phân hệ Billing hệ thống`,
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Thanh toán thất bại");
-
-      // Quy tắc Đồng bộ State kép của dự án:
-      setIsPaymentDialogOpen(false); // 1. Tắt hộp thoại Dialog lập tức
-      router.refresh(); // 2. Ép Server đồng bộ trạng thái bàn sang "Dọn dẹp" ngầm từ máy chủ
-
-      alert(
-        "Hóa đơn đã được chốt thành công! Bàn đã chuyển sang trạng thái chờ dọn dẹp.",
-      );
-    } catch (error: any) {
-      console.error(error);
-      alert(error.message || "Không thể chốt thanh toán. Vui lòng thử lại!");
-    } finally {
-      setIsPrinting(false);
-    }
-  };
-
-  const calculateTotal = () => {
-    if (!selectedOrder)
-      return { subtotal: 0, discountAmount: 0, tax: 0, total: 0 };
-
-    const subtotal = selectedOrder.subtotal || 0;
-    const discountAmount = parseFloat(discount) || 0;
-    const taxableAmount = subtotal - discountAmount;
-    const tax = taxableAmount * 0.1;
-    const total = taxableAmount + tax;
-
-    return { subtotal, discountAmount, tax, total };
-  };
-
-  const { subtotal, discountAmount, tax, total } = calculateTotal();
-  const received = parseFloat(receivedAmount) || 0;
-  const change = received - total;
-
+  // --- TINH NĂNG CỐT LÕI: GỘP CÁC ĐƠN HÀNG CỦA CÙNG 1 BÀN THÀNH 1 HÓA ĐƠN DUY NHẤT ---
   const groupedOrders = useMemo(() => {
     const groups: { [key: string]: any } = {};
 
     orders.forEach((order) => {
-      const tableId = order.table_id || "takeaway";
+      // Chỉ gộp các đơn hàng chưa thanh toán (loại trừ các đơn mang trạng thái completed)
+      if (order.status?.toLowerCase() === "completed") return;
+
+      const tableId = order.table_id || "takeaway"; // Nếu không có bàn thì quy về đơn mang về (takeaway)
 
       if (!groups[tableId]) {
+        // Khởi tạo nhóm bàn ăn mới nếu chưa tồn tại
         groups[tableId] = {
           ...order,
           items: [...(order.items || [])],
           subtotal: Number(order.subtotal),
           tax: Number(order.tax),
           total: Number(order.total),
-          order_ids: [order.id], // Gom danh sách ID lại để lúc bấm "Chốt" thì Update tất cả các đơn này thành 'paid'
+          order_ids: [order.id], // Lưu lại mảng id các đơn để chốt loạt một lúc
         };
       } else {
+        // Nếu bàn này đã có đơn trước đó, tiến hành cộng dồn món và tiền bạc
         groups[tableId].items = [
           ...groups[tableId].items,
           ...(order.items || []),
@@ -202,41 +111,109 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
     return Object.values(groups);
   }, [orders]);
 
-  // 1. Tính số lượng đơn hàng thực tế đang chờ thanh toán (Đếm số thẻ gộp đang hiện)
-  const totalPendingBillingCount = groupedOrders.length;
-
-  // 2. Lọc ra danh sách các đơn hàng đã thanh toán thành công (status === 'completed' hoặc 'paid')
-  const completedOrders = orders.filter((o) => o.status === "completed");
-
-  // 3. Tính tổng doanh thu hôm nay từ các đơn đã thanh toán thành công
-  const todayRevenue = completedOrders.reduce(
-    (sum, order) => sum + (Number(order.total) || 0),
-    0,
+  // --- LOGIC TÍNH TOÁN THỐNG KÊ DOANH THU THỜI GIAN THỰC ---
+  // Lọc ra các đơn mang trạng thái hoàn thành để tính các thông số phụ trợ
+  const completedOrders = orders.filter(
+    (o) => o.status?.toLowerCase() === "completed",
   );
 
-  // 4. Đếm số lượng giao dịch thành công thực tế
-  const completedTransactionsCount = completedOrders.length;
+  // Sử dụng dữ liệu stats chính xác được file page.tsx truyền xuống
+  const todayRevenue = stats.todayRevenue;
+  const completedTransactionsCount = stats.todayTransactions;
 
-  // 5. Tính toán giá trị trung bình trên mỗi đơn hàng đã thanh toán
+  // Các phép toán thống kê phụ trợ hiển thị trên giao diện thẻ
   const averagePerOrder =
     completedTransactionsCount > 0
       ? todayRevenue / completedTransactionsCount
       : 0;
-
-  // 6. Tìm kiếm hóa đơn có trị giá cao nhất trong ngày
   const highestOrderTotal =
     completedOrders.length > 0
       ? Math.max(...completedOrders.map((o) => Number(o.total) || 0))
       : 0;
+  const totalPendingBillingCount = groupedOrders.length;
+
+  // Xử lý kích hoạt mở dialog tính tiền
+  const handlePayment = (order: any) => {
+    setSelectedOrder(order);
+    const orderTotal = order.total || 0;
+    setReceivedAmount(orderTotal.toString());
+    setDiscount("");
+    setPaymentMethod("cash");
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handlePrintBill = () => {
+    setIsPrinting(true);
+    setTimeout(() => setIsPrinting(false), 500);
+  };
+
+  // Tính toán chi phí thực tế (Tạm tính, giảm giá, VAT, Tổng tiền sau cùng)
+  const calculateTotal = () => {
+    if (!selectedOrder)
+      return { subtotal: 0, discountAmount: 0, tax: 0, total: 0 };
+
+    const subtotal = selectedOrder.subtotal || 0;
+    const discountAmount = parseFloat(discount) || 0;
+    const taxableAmount = Math.max(0, subtotal - discountAmount);
+    const tax = taxableAmount * 0.1;
+    const total = taxableAmount + tax;
+
+    return { subtotal, discountAmount, tax, total };
+  };
+
+  const { subtotal, discountAmount, tax, total } = calculateTotal();
+  const received = parseFloat(receivedAmount) || 0;
+  const change = received - total;
+
+  // Bấm nút xác nhận thanh toán cuối cùng gửi về API xử lý
+  const handleConfirmPayment = async () => {
+    if (!selectedOrder) return;
+
+    try {
+      setIsPrinting(true);
+
+      const response = await fetch("/api/billing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // Bắn toàn bộ mảng ID đơn hàng đã được gộp của bàn này lên API chốt một thể
+          order_ids: selectedOrder.order_ids || [selectedOrder.id],
+          table_id: selectedOrder.table_id || "takeaway",
+          amount: total,
+          payment_method: paymentMethod,
+          discount: parseFloat(discount) || 0,
+          received_amount:
+            paymentMethod === "cash" ? parseFloat(receivedAmount) || 0 : total,
+          change_amount: paymentMethod === "cash" ? change : 0,
+          note: `Thanh toán qua phân hệ Billing hệ thống`,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Thanh toán thất bại");
+
+      setIsPaymentDialogOpen(false);
+      router.refresh(); // Gọi làm mới để server cập nhật doanh thu mới nhất lập tức
+
+      alert(
+        "Hóa đơn đã được chốt thành công! Bàn đã chuyển sang trạng thái chờ dọn dẹp.",
+      );
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "Không thể chốt thanh toán. Vui lòng thử lại!");
+    }
+    {
+      setIsPrinting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* HÀNG 1: Ba ô tài chính cốt lõi (Cần không gian rộng tối đa để hiển thị tiền lớn) */}
+      {/* Khối thẻ Thống kê Tài chính Phía trên */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* THẺ 1: DOANH THU HÔM NAY */}
-        <Card className="overflow-hidden border-none bg-rose-500/5 shadow-xs rounded-xl">
+        <Card className="border-none bg-rose-500/5 shadow-xs rounded-xl">
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-rose-500/10 text-rose-600 shrink-0 text-xl font-bold">
+            <div className="p-3 rounded-xl bg-rose-500/10 text-rose-600 font-bold">
               $
             </div>
             <div className="min-w-0 space-y-0.5">
@@ -250,10 +227,9 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
           </CardContent>
         </Card>
 
-        {/* THẺ 2: TRUNG BÌNH / ĐƠN */}
-        <Card className="overflow-hidden border-none bg-emerald-500/5 shadow-xs rounded-xl">
+        <Card className="border-none bg-emerald-500/5 shadow-xs rounded-xl">
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 shrink-0 text-xl font-bold">
+            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 font-bold">
               $
             </div>
             <div className="min-w-0 space-y-0.5">
@@ -267,10 +243,9 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
           </CardContent>
         </Card>
 
-        {/* THẺ 3: ĐƠN CAO NHẤT */}
-        <Card className="overflow-hidden border-none bg-blue-500/5 shadow-xs rounded-xl">
+        <Card className="border-none bg-blue-500/5 shadow-xs rounded-xl">
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 shrink-0 text-xl font-bold">
+            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 font-bold">
               📈
             </div>
             <div className="min-w-0 space-y-0.5">
@@ -285,12 +260,10 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
         </Card>
       </div>
 
-      {/* HÀNG 2: Hai ô đếm số lượng vận hành (Nhỏ gọn, tiết kiệm diện tích) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* THẺ 4: SỐ GIAO DỊCH */}
-        <Card className="overflow-hidden border-none bg-indigo-500/5 shadow-xs rounded-xl">
+        <Card className="border-none bg-indigo-500/5 shadow-xs rounded-xl">
           <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-600 shrink-0 text-sm">
+            <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-600 text-sm">
               📊
             </div>
             <div className="min-w-0 flex items-baseline gap-2">
@@ -304,10 +277,9 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
           </CardContent>
         </Card>
 
-        {/* THẺ 5: CHỜ THANH TOÁN */}
-        <Card className="overflow-hidden border-none bg-amber-500/5 shadow-xs rounded-xl">
+        <Card className="border-none bg-amber-500/5 shadow-xs rounded-xl">
           <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-600 shrink-0 text-sm">
+            <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-600 text-sm">
               💵
             </div>
             <div className="min-w-0 flex items-baseline gap-2">
@@ -322,7 +294,7 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
         </Card>
       </div>
 
-      {/* Orders List */}
+      {/* Vùng hiển thị danh sách các bàn chờ chốt thanh toán */}
       <Card>
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
@@ -331,8 +303,8 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
                 Đơn hàng chờ thanh toán
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Danh sách {groupedOrders.length} đơn hàng đang chờ hoàn tất
-                thanh toán.
+                Danh sách {groupedOrders.length} nhóm đơn hàng theo bàn đang chờ
+                hoàn tất thanh toán.
               </p>
             </div>
             <div className="text-right">
@@ -340,13 +312,13 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
                 {groupedOrders.length}
               </p>
               <p className="text-xs text-muted-foreground block mt-1">
-                đơn hàng
+                bàn chờ
               </p>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {orders.length === 0 ? (
+          {groupedOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <Receipt className="h-16 w-16 mb-4 opacity-50" />
               <p className="text-lg font-medium">
@@ -387,31 +359,32 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
 
                     <ScrollArea className="h-[100px] mb-4 rounded-lg border border-border/50 p-3">
                       <div className="space-y-2 text-sm">
-                        {groupedOrders
-                          .flatMap((o) => o.items)
-                          .map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex justify-between items-start gap-2"
-                            >
-                              <span className="text-muted-foreground flex-1">
-                                <span className="font-medium text-foreground">
-                                  {item.quantity}x
-                                </span>{" "}
-                                {item.menu_item?.name}
-                              </span>
-                              <span className="font-medium whitespace-nowrap">
-                                {formatCurrency(item.total_price)}
-                              </span>
-                            </div>
-                          ))}
+                        {/* ĐÃ SỬA CHUẨN: Duyệt món ăn thuộc chính xác nhóm đơn của bàn này, không bị lặp món bàn khác */}
+                        {order.items?.map((item: any, dynamicIdx: number) => (
+                          <div
+                            key={`${item.id}-${dynamicIdx}`}
+                            className="flex justify-between items-start gap-2"
+                          >
+                            <span className="text-muted-foreground flex-1">
+                              <span className="font-medium text-foreground">
+                                {item.quantity}x
+                              </span>{" "}
+                              {item.menu_item?.name}
+                            </span>
+                            <span className="font-medium whitespace-nowrap">
+                              {formatCurrency(item.total_price)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </ScrollArea>
 
                     <Separator className="my-3" />
 
                     <div className="flex items-center justify-between mb-4 bg-primary/5 p-3 rounded-lg">
-                      <span className="text-sm font-medium">Tổng cộng</span>
+                      <span className="text-sm font-medium">
+                        Tổng cộng (Đã gộp)
+                      </span>
                       <span className="text-xl font-bold text-primary">
                         {formatCurrency(order.total)}
                       </span>
@@ -432,21 +405,17 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
         </CardContent>
       </Card>
 
-      {/* Payment Dialog */}
+      {/* Hộp thoại Dialog Xử lý thanh toán chi tiết */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        {/* ĐÃ SỬA: Thêm max-h-[90vh], flex-col và overflow-hidden để khóa khung Dialog cố định */}
         <DialogContent className="max-w-md w-[95vw] max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-xl">
-          {/* Phần Header cố định trên cùng */}
           <DialogHeader className="p-5 pb-4 border-b bg-muted/20 shrink-0">
             <DialogTitle className="text-xl font-black">
               Thanh toán đơn #{selectedOrder?.order_number}
             </DialogTitle>
-            {/* Giữ DialogDescription ngắn gọn đúng nghĩa văn bản text để tránh lỗi */}
             <DialogDescription className="text-xs">
               Vui lòng kiểm tra thông tin và hoàn tất thủ tục chốt hóa đơn.
             </DialogDescription>
 
-            {/* ĐÃ SỬA: Tách cụm thông tin phòng bàn ra thành thẻ div độc lập bên dưới Header */}
             <div className="mt-3 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground font-semibold">
@@ -464,32 +433,19 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
                   {selectedOrder?.guest_count} người
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-semibold">
-                  Giờ tạo:
-                </span>
-                <span className="text-foreground">
-                  {selectedOrder?.created_at
-                    ? formatTime(selectedOrder.created_at)
-                    : "-"}
-                </span>
-              </div>
             </div>
           </DialogHeader>
 
-          {/* ========================================================= */}
-          {/* VÙNG TRUNG TÂM CUỘN DỌC: Thêm flex-1 overflow-y-auto p-5 */}
-          {/* ========================================================= */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {/* Order Summary */}
             <div>
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                Chi tiết đơn hàng
+                Chi tiết món ăn (Đơn gộp)
               </Label>
               <ScrollArea className="h-[130px] rounded-xl border border-border/60 p-3 bg-muted/10">
-                {selectedOrder?.items?.map((item) => (
+                {/* ĐÃ SỬA CHUẨN: Chỉ map danh sách món ăn thuộc riêng bàn đang được chọn tính tiền */}
+                {selectedOrder?.items?.map((item: any, dynamicIdx: number) => (
                   <div
-                    key={item.id}
+                    key={`${item.id}-${dynamicIdx}`}
                     className="flex justify-between py-1 text-sm border-b border-dashed border-border/40 last:border-none"
                   >
                     <div className="truncate pr-2">
@@ -508,7 +464,7 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
               </ScrollArea>
             </div>
 
-            {/* Payment Method */}
+            {/* Chọn Phương thức thanh toán */}
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Chọn phương thức thanh toán
@@ -533,7 +489,7 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
               </div>
             </div>
 
-            {/* Discount */}
+            {/* Mục nhập Giảm giá */}
             <div className="space-y-1.5">
               <Label
                 htmlFor="discount"
@@ -551,7 +507,7 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
               />
             </div>
 
-            {/* Received Amount (for cash) */}
+            {/* Ô nhập Tiền mặt khách đưa (Chỉ hiện khi chọn tiền mặt) */}
             {paymentMethod === "cash" && (
               <div className="space-y-1.5">
                 <Label
@@ -571,7 +527,7 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
               </div>
             )}
 
-            {/* Summary Block */}
+            {/* Bảng kê tổng tiền tài chính cuối cùng */}
             <div className="space-y-2 pt-3 border-t border-border/80">
               <div className="flex justify-between text-xs font-medium text-muted-foreground">
                 <span>Tạm tính</span>
@@ -582,10 +538,8 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
 
               {discountAmount > 0 && (
                 <div className="flex justify-between text-xs bg-green-500/10 border border-green-500/20 px-2 py-1.5 rounded-lg">
-                  <span className="text-green-700 dark:text-green-400 font-bold">
-                    Giảm giá
-                  </span>
-                  <span className="text-green-700 dark:text-green-400 font-black">
+                  <span className="text-green-700 font-bold">Giảm giá</span>
+                  <span className="text-green-700 font-black">
                     -{formatCurrency(discountAmount)}
                   </span>
                 </div>
@@ -609,11 +563,12 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
 
               {paymentMethod === "cash" && received > 0 && (
                 <div
-                  className={`flex justify-between items-center font-bold px-3 py-2 rounded-xl text-xs border ${
+                  className={cn(
+                    "flex justify-between items-center font-bold px-3 py-2 rounded-xl text-xs border",
                     change >= 0
                       ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
-                      : "bg-rose-500/10 text-rose-700 border-rose-500/20"
-                  }`}
+                      : "bg-rose-500/10 text-rose-700 border-rose-500/20",
+                  )}
                 >
                   <span>
                     {change >= 0 ? "Tiền thừa trả khách" : "Khách còn thiếu"}
@@ -626,7 +581,6 @@ export function BillingContent({ orders, stats }: BillingContentProps) {
             </div>
           </div>
 
-          {/* Phần Chân trang cố định dưới cùng - Luôn hiển thị trước mắt thu ngân */}
           <DialogFooter className="p-4 border-t bg-muted/15 flex gap-2 justify-end shrink-0 sm:space-x-0">
             <Button
               type="button"

@@ -1,88 +1,194 @@
-import { createClient } from '@/lib/supabase/server'
-import { Header } from '@/components/dashboard/header'
-import { DashboardContent } from './dashboard-content'
+// app/dashboard/page.tsx
+import { createClient } from "@/lib/supabase/server";
+import { Header } from "@/components/dashboard/header";
+import { DashboardContent } from "./dashboard-content";
+import { Table, Area, Order, MenuItem } from "@/lib/types/database";
 
 async function getDashboardData() {
-  const supabase = await createClient()
+  const supabase = await createClient();
+  const now = new Date();
 
-  // Fetch tables with areas
-  const { data: tables } = await supabase
-    .from('tables')
-    .select('*, area:areas(*)')
-    .eq('is_active', true)
-    .order('name')
+  // Mốc bắt đầu ngày hôm nay (00:00:00)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = today.toISOString();
 
-  // Fetch areas
-  const { data: areas } = await supabase
-    .from('areas')
-    .select('*')
-    .eq('is_active', true)
-    .order('sort_order')
+  // Mốc 7 ngày trước để quét dữ liệu làm biểu đồ và top món chạy thực tế
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 7);
+  const sevenDaysAgoISO = sevenDaysAgo.toISOString();
 
-  // Fetch today's orders
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
-  const { data: todayOrders } = await supabase
-    .from('orders')
-    .select('*, table:tables(*)')
-    .gte('created_at', today.toISOString())
-    .order('created_at', { ascending: false })
+  // 1. Chạy song song toàn bộ các câu lệnh truy vấn dữ liệu nền từ Database
+  const [
+    { data: tables },
+    { data: areas },
+    { data: todayOrdersData },
+    { data: recentOrdersData },
+    { data: activeOrdersData },
+    { data: weeklyOrdersData },
+    { data: allOrderItems },
+  ] = await Promise.all([
+    // Lấy danh sách bàn
+    supabase
+      .from("tables")
+      .select("*, area:areas(*)")
+      .eq("is_active", true)
+      .order("name"),
 
-  // Fetch active orders (not completed or cancelled)
-  const { data: activeOrders } = await supabase
-    .from('orders')
-    .select('*, table:tables(*)')
-    .not('status', 'in', '("completed","cancelled")')
-    .order('created_at', { ascending: false })
-    .limit(10)
+    // Lấy danh sách khu vực
+    supabase
+      .from("areas")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order"),
 
-  // Fetch menu items for top selling (mock data for now)
-  const { data: menuItems } = await supabase
-    .from('menu_items')
-    .select('*')
-    .eq('is_active', true)
-    .limit(5)
+    // Lấy đơn hàng hôm nay để đếm số lượng & tính KPI doanh thu
+    supabase.from("orders").select("total, status").gte("created_at", todayISO),
 
-  // Calculate stats
-  const todayRevenue = todayOrders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0
-  const occupiedTables = tables?.filter((t) => t.status === 'occupied').length || 0
-  const availableTables = tables?.filter((t) => t.status === 'available').length || 0
-  const reservedTables = tables?.filter((t) => t.status === 'reserved').length || 0
+    // Luôn luôn lấy dữ liệu 5 đơn hàng mới nhất (Bất kể đã thanh toán hay chưa)
+    supabase
+      .from("orders")
+      .select("*, table:tables(*)")
+      .order("created_at", { ascending: false })
+      .limit(5),
 
-  // Mock revenue data for chart (7 days)
-  const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-  const revenueData = days.map((name, index) => ({
-    name,
-    revenue: Math.floor(Math.random() * 5000000) + 2000000,
-  }))
+    // Đếm số đơn hàng chưa thanh toán đang phục vụ tại quán
+    supabase
+      .from("orders")
+      .select("id")
+      .not("status", "in", '("completed","cancelled","paid")'),
 
-  // Add mock total_sold for menu items
-  const topSellingItems = menuItems?.map((item) => ({
-    ...item,
-    total_sold: Math.floor(Math.random() * 50) + 10,
-  })) || []
+    // Lấy toàn bộ đơn hàng 7 ngày qua để tính toán biểu đồ
+    supabase
+      .from("orders")
+      .select("total, created_at, status")
+      .gte("created_at", sevenDaysAgoISO),
+
+    // Lấy món ăn đã bán trong 7 ngày qua làm Top món chạy
+    supabase
+      .from("order_items")
+      .select("quantity, menu_item:menu_items(id, name, price, image_url)")
+      .gte("created_at", sevenDaysAgoISO),
+  ]);
+
+  // ========================================================
+  // 🔥 ĐỒNG BỘ CHI TIẾT MÓN ĂN CHO 5 HÓA ĐƠN GẦN NHẤT
+  // ========================================================
+  const recentOrderIds = recentOrdersData?.map((o) => o.id) || [];
+
+  // Truy vấn tìm các món ăn nằm trong 5 hóa đơn vừa lấy ở trên
+  const { data: recentItemsData } =
+    recentOrderIds.length > 0
+      ? await supabase
+          .from("order_items")
+          .select("*, menu_item:menu_items(name, price)")
+          .in("order_id", recentOrderIds)
+      : { data: [] };
+
+  // Khớp nối danh sách món ăn vào từng hóa đơn tương ứng bằng JavaScript
+  const recentOrdersWithItems =
+    recentOrdersData?.map((order) => ({
+      ...order,
+      order_items:
+        recentItemsData?.filter((item) => item.order_id === order.id) || [],
+    })) || [];
+
+  // ========================================================
+  // 📈 XỬ LÝ BIỂU ĐỒ DOANH THU 7 NGÀY (THỰC TẾ 100%)
+  // ========================================================
+  const weekdayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+  const revenueData = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const dateStr = `${day}/${month}`;
+    const dayName = weekdayNames[d.getDay()];
+
+    const dayRevenue =
+      weeklyOrdersData?.reduce((sum, order) => {
+        const orderDate = new Date(order.created_at);
+        const oDay = String(orderDate.getDate()).padStart(2, "0");
+        const oMonth = String(orderDate.getMonth() + 1).padStart(2, "0");
+        const oDateStr = `${oDay}/${oMonth}`;
+
+        if (oDateStr === dateStr && order.status !== "cancelled") {
+          return sum + (Number(order.total) || 0);
+        }
+        return sum;
+      }, 0) || 0;
+
+    revenueData.push({
+      name: `${dayName} (${dateStr})`,
+      revenue: dayRevenue,
+    });
+  }
+
+  // ========================================================
+  // 🍳 XỬ LÝ TOP MÓN ĂN BÁN CHẠY (THỰC TẾ 100%)
+  // ========================================================
+  const itemSalesMap: { [key: string]: any } = {};
+  allOrderItems?.forEach((item: any) => {
+    const menuItem = item.menu_item;
+    if (!menuItem) return;
+
+    if (!itemSalesMap[menuItem.id]) {
+      itemSalesMap[menuItem.id] = {
+        id: menuItem.id,
+        name: menuItem.name,
+        price: menuItem.price,
+        image_url: menuItem.image_url,
+        total_sold: 0,
+      };
+    }
+    itemSalesMap[menuItem.id].total_sold += item.quantity || 0;
+  });
+
+  const topSellingItems = Object.values(itemSalesMap)
+    .sort((a: any, b: any) => b.total_sold - a.total_sold)
+    .slice(0, 5) as (MenuItem & { total_sold: number })[];
+
+  // ========================================================
+  // 📊 TÍNH TOÁN CÁC CHỈ SỐ KPI TRONG NGÀY
+  // ========================================================
+  const todayRevenue =
+    todayOrdersData?.reduce((sum, order) => {
+      if (order.status !== "cancelled") {
+        return sum + (Number(order.total) || 0);
+      }
+      return sum;
+    }, 0) || 0;
+
+  const occupiedTables =
+    tables?.filter((t) => t.status === "occupied").length || 0;
+  const availableTables =
+    tables?.filter((t) => t.status === "available").length || 0;
+  const reservedTables =
+    tables?.filter((t) => t.status === "reserved").length || 0;
 
   return {
     tables: tables || [],
     areas: areas || [],
-    recentOrders: activeOrders || [],
+    recentOrders: recentOrdersWithItems, // Đã đồng bộ đầy đủ mảng order_items bên trong
     topSellingItems,
     revenueData,
     stats: {
       todayRevenue,
-      todayOrders: todayOrders?.length || 0,
-      activeOrders: activeOrders?.length || 0,
+      todayOrders: todayOrdersData?.length || 0,
+      activeOrders: activeOrdersData?.length || 0,
       occupiedTables,
       totalTables: tables?.length || 0,
       availableTables,
       reservedTables,
     },
-  }
+  };
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData()
+  const data = await getDashboardData();
 
   return (
     <>
@@ -91,5 +197,5 @@ export default async function DashboardPage() {
         <DashboardContent {...data} />
       </main>
     </>
-  )
+  );
 }

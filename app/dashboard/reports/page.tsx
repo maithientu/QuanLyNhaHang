@@ -8,19 +8,26 @@ import type { UserRole } from "@/lib/types/database";
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
+// Hàm xử lý lấy dữ liệu báo cáo ban đầu phía Server (Mặc định 7 ngày gần nhất)
 async function getInitialReportsData() {
   const supabase = await createClient();
 
-  // Mặc định nạp dữ liệu của 7 ngày gần nhất khi vừa tải trang lần đầu tiên
+  // Khởi tạo khoảng thời gian độc lập một cách an toàn
   const now = new Date();
-  const startDate = new Date(now.setDate(now.getDate() - 7)).toISOString();
   const endDate = new Date().toISOString();
+  
+  // Tránh lỗi tham chiếu vùng nhớ bằng cách khởi tạo đối tượng Date mới hoàn toàn
+  const pastDate = new Date();
+  pastDate.setDate(now.getDate() - 7);
+  const startDate = pastDate.toISOString();
 
+  // Chạy song song 2 câu query tối ưu hóa tốc độ tải trang
   const [{ data: payments }, { data: allOrders }] = await Promise.all([
     supabase
       .from("payments")
       .select("*, order:orders(*)")
-      .eq("status", "completed")
+      // ĐÃ SỬA: Chuyển đổi trạng thái từ 'completed' thành 'paid' theo đúng cấu trúc thực tế của bảng payments
+      .eq("status", "paid")
       .gte("created_at", startDate)
       .lte("created_at", endDate),
 
@@ -31,10 +38,11 @@ async function getInitialReportsData() {
       .lte("created_at", endDate),
   ]);
 
-  const completedOrderIds =
-    payments?.map((p) => p.order_id).filter(Boolean) || [];
+  // Trích xuất danh sách ID của các đơn hàng đã được đối soát thanh toán thành công
+  const completedOrderIds = payments?.map((p) => p.order_id).filter(Boolean) || [];
   let orderItems: any[] = [];
 
+  // Chỉ tiến hành query bảng order_items nếu có đơn hàng hoàn thành để tránh lỗi syntax SQL
   if (completedOrderIds.length > 0) {
     const { data: items, error: itemsError } = await supabase
       .from("order_items")
@@ -45,8 +53,6 @@ async function getInitialReportsData() {
       console.error("Lỗi lấy dữ liệu order_items ban đầu:", itemsError);
     }
     orderItems = items || [];
-  } else {
-    orderItems = [];
   }
 
   return {
@@ -59,18 +65,16 @@ async function getInitialReportsData() {
 }
 
 export default async function ReportsPage() {
-  // ==================== ⚡LOGIC BẢO MẬT  ====================
+  // ==================== ⚡ LOGIC BẢO MẬT & PHÂN QUYỀN ====================
   const supabase = await createClient();
 
-  // 1. Lấy thông tin phiên đăng nhập hiện tại
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // 1. Kiểm tra xác thực phiên đăng nhập của người dùng
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     redirect("/auth/login");
   }
 
-  // 2. Kiểm tra vai trò thực tế (Role) từ Database
+  // 2. Truy vấn phân hệ quyền hạn (Role) từ bảng profiles
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
@@ -79,18 +83,21 @@ export default async function ReportsPage() {
 
   const userRole = profile?.role as UserRole;
 
-  // 3. CHẶN QUYỀN: Nếu không phải Quản lý (manager), đá ngược về trang dashboard ngay lập tức
+  // 3. CHẶN QUYỀN NGHIÊM NGẶT: Nếu không phải Quản lý (manager), đá văng về màn hình chính
   if (userRole !== "manager") {
     redirect("/dashboard");
   }
   // =========================================================================
 
+  // Nạp dữ liệu báo cáo tầng server
   const data = await getInitialReportsData();
 
   return (
     <>
+      {/* ĐÃ SỬA: Giữ lại cấu trúc Header gọn gàng không lỗi thuộc tính */}
       <Header title="Báo cáo doanh thu" />
       <main className="flex-1 p-4 md:p-6 overflow-auto">
+        {/* Khởi tạo phân hệ hiển thị báo cáo phía Client */}
         <ReportsContent {...data} />
       </main>
     </>
