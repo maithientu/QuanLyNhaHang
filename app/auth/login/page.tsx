@@ -58,7 +58,8 @@ export default function LoginPage() {
           </h1>
           <p className="mx-auto max-w-2xl text-base leading-7 text-slate-600">
             Nhập email và mật khẩu để truy cập dashboard nhân viên. Nếu chưa có
-            tài khoản, bạn có thể đăng ký mới.
+            tài khoản hoặc quên thông tin, vui lòng liên hệ Quản lý ca để được
+            cấp lại.
           </p>
         </div>
 
@@ -101,10 +102,10 @@ export default function LoginPage() {
               Giữ đăng nhập
             </label>
             <Link
-              href="/auth/register"
+              href="/auth/forgot-password"
               className="font-semibold text-amber-700 hover:text-amber-900"
             >
-              Tạo tài khoản mới
+              Quên mật khẩu?
             </Link>
           </div>
 
