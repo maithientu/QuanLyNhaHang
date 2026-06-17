@@ -104,13 +104,13 @@ export function DashboardContent({
           description="so với hôm qua"
           iconClassName="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
         />
-        {/*<StatCard
+        <StatCard
           title="Đơn đang xử lý"
           value={stats.activeOrders}
           icon={Clock}
           description="đang chờ phục vụ"
           iconClassName="bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400"
-        />*/}
+        />
         <StatCard
           title="Bàn trống"
           value={`${stats.availableTables}/${stats.totalTables}`}
