@@ -63,7 +63,7 @@ export function DashboardContent({
   }, []);
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6 p-1">
+    <div className="mx-auto max-w-[1600px] space-y-10 p-1">
       {/* Intro banner */}
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
