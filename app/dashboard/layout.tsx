@@ -40,7 +40,7 @@ export default async function DashboardLayout({
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      {/* <IdleLogout /> COMPONENT TỰ ĐỘNG ĐĂNG XUẤT CHẠY NGẦM */}
+      <IdleLogout /> 
       {/* SidebarProvider mặc định đã là full màn hình, không bọc thêm div h-screen bên ngoài nó */}
       <SidebarProvider>
         <AppSidebar />
